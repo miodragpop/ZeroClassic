@@ -41,6 +41,9 @@ using namespace std;
  *
  * Or alternatively, create a specific query method for the information.
  **/
+ 
+extern int32_t longestchain();
+
 UniValue getinfo(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 0)
@@ -81,6 +84,8 @@ UniValue getinfo(const UniValue& params, bool fHelp)
     GetProxy(NET_IPV4, proxy);
 
     UniValue obj(UniValue::VOBJ);
+
+    obj.push_back(Pair("buildversion", CLIENT_BUILD));
     obj.push_back(Pair("version", CLIENT_VERSION));
     obj.push_back(Pair("protocolversion", PROTOCOL_VERSION));
 #ifdef ENABLE_WALLET
@@ -95,6 +100,11 @@ UniValue getinfo(const UniValue& params, bool fHelp)
     obj.push_back(Pair("proxy",         (proxy.IsValid() ? proxy.proxy.ToStringIPPort() : string())));
     obj.push_back(Pair("difficulty",    (double)GetDifficulty()));
     obj.push_back(Pair("testnet",       Params().TestnetToBeDeprecatedFieldRPC()));
+    
+    obj.push_back(Pair("p2pport",       GetListenPort()));
+    obj.push_back(Pair("rpcport",       GetArg("-rpcport", BaseParams().RPCPort())));
+    obj.push_back(Pair("longestchain",  longestchain()));
+    
 #ifdef ENABLE_WALLET
     if (pwalletMain) {
         obj.push_back(Pair("keypoololdest", pwalletMain->GetOldestKeyPoolTime()));

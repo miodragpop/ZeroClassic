@@ -1,6 +1,6 @@
 package=libsodium
 $(package)_version=1.0.16
-$(package)_download_path=https://download.libsodium.org/libsodium/releases/
+$(package)_download_path=https://download.libsodium.org/libsodium/releases/old/
 $(package)_file_name=$(package)-$($(package)_version).tar.gz
 $(package)_sha256_hash=eeadc7e1e1bcef09680fb4837d448fbdf57224978f865ac1c16745868fbd0533
 $(package)_dependencies=

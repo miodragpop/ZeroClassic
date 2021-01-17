@@ -14,6 +14,7 @@
 #include "streams.h"
 #include "sync.h"
 #include "util.h"
+#include "clientversion.h"
 
 #include <stdint.h>
 
@@ -653,6 +654,73 @@ UniValue verifychain(const UniValue& params, bool fHelp)
     return CVerifyDB().VerifyDB(pcoinsTip, nCheckLevel, nCheckDepth);
 }
 
+UniValue exportchain(const UniValue& params, bool fHelp)
+{
+    if (fHelp || params.size() != 1)
+        throw runtime_error(
+            "exportchain filename\n"
+            "\nExports blockchain database (makes bootstrap).\n"
+            "\nArguments:\n"
+            "1. filename   (string, required).\n"
+            "\nResult:\n"
+            "true|false       (boolean) Exported or not\n"
+            "\nExamples:\n"
+            + HelpExampleCli("exportchain", "")
+            + HelpExampleRpc("exportchain", "")
+        );
+
+    LOCK(cs_main);
+
+    UniValue ret(UniValue::VOBJ);
+    std::string filename = params[0].get_str();
+
+    Consensus::Params chainparams = Params().GetConsensus();
+
+    boost::filesystem::path path = boost::filesystem::current_path() / filename; 
+    FILE* file = fopen(path.string().c_str(), "wb+");
+    if (!file) {
+        ret.pushKV("result", true);
+        ret.pushKV("description", strprintf("%s created", filename));
+    } else {
+        CAutoFile fileout(file, SER_DISK, CLIENT_VERSION);
+
+        CBlockIndex* pindex = chainActive.Genesis();
+        CBlockIndex* current_tip = chainActive.Tip();
+
+        while (pindex && pindex != current_tip)
+        {
+            CBlock block;
+
+            if (ReadBlockFromDisk(block, pindex))
+            {
+                // Write index header
+                unsigned int nSize = GetSerializeSize(fileout, block);
+                fileout << FLATDATA(Params().MessageStart()) << nSize;
+                
+                // Write block
+                long fileOutPos = ftell(fileout.Get());
+                if (fileOutPos < 0)
+                    return error("WriteBlockToDisk: ftell failed");
+                fileout << block;
+
+                if (pindex->nHeight % 50000 == 0)
+                {
+                    LogPrintf("Still exporting blocks %i/%i\n", pindex->nHeight, current_tip->nHeight);
+                }
+
+                pindex = chainActive.Next(pindex);
+            }
+        }
+
+        
+
+        ret.pushKV("result", true);
+        ret.pushKV("description", strprintf("%s created", path.generic_string()));
+    }
+
+    return ret;
+}
+
 /** Implementation of IsSuperMajority with better feedback */
 static UniValue SoftForkMajorityDesc(int minVersion, CBlockIndex* pindex, int nRequired, const Consensus::Params& consensusParams)
 {
@@ -1042,6 +1110,7 @@ static const CRPCCommand commands[] =
     { "blockchain",         "gettxout",               &gettxout,               true  },
     { "blockchain",         "gettxoutsetinfo",        &gettxoutsetinfo,        true  },
     { "blockchain",         "verifychain",            &verifychain,            true  },
+    { "blockchain",         "exportchain",            &exportchain,            true  },
 
     /* Not shown in help */
     { "hidden",             "invalidateblock",        &invalidateblock,        true  },
